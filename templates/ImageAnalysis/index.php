@@ -1,9 +1,11 @@
-<h1><?= h($title) ?></h1>
-<p><?= h($message) ?></p>
+<h1>AI Image Analysis</h1>
 
 <!-- 画像アップロードフォーム -->
-<form method="post" enctype="multipart/form-data" action="<?= $this->Url->build(['action' => 'analyze']) ?>">
+<?= $this->Form->create(null, [
+    'type' => 'file', 
+    'url' => ['action' => 'analyze']
+]) ?>
     <label>画像を選択:</label>
-    <input type="file" name="image" accept="image/*" required>
-    <button type="submit">解析する</button>
-</form>
+    <?= $this->Form->file('image', ['accept' => 'image/*', 'required' => true]) ?>
+    <?= $this->Form->button('解析する') ?>
+<?= $this->Form->end() ?>
