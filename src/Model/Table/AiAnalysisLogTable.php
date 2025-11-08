@@ -52,33 +52,68 @@ class AiAnalysisLogTable extends Table
     {
         $validator
             ->scalar('image_path')
-            ->maxLength('image_path', 255)
+            ->maxLength('image_path', 255, 'image_pathは255文字までです。')
             ->allowEmptyString('image_path');
 
         $validator
-            ->boolean('success')
-            ->requirePresence('success', 'create')
-            ->notEmptyString('success');
+            ->boolean('success', 'successは0または1を指定してください。')
+            ->requirePresence('success', 'create', 'successは必須パラメータです。')
+            ->notEmptyString('success', 'successは必須パラメータです。');
 
         $validator
             ->scalar('message')
-            ->maxLength('message', 255)
+            ->maxLength('message', 255, 'messageは255文字までです。')
             ->allowEmptyString('message');
 
         $validator
-            ->integer('class')
+            ->integer('class', 'classは整数で指定してください。')
+            ->add('class', 'maxDigits', [
+                'rule' => function ($value) {
+                    return strlen((string)abs((int)$value)) <= 11;
+                },
+                'message' => 'classは最大11桁までです。'
+            ])
             ->allowEmptyString('class');
 
         $validator
-            ->decimal('confidence')
+            ->add('confidence', 'validLength', [
+                'rule' => function ($value) {
+                    // 整数＋小数点＋小数 = 合計5桁以内か確認
+                    if (!is_numeric($value)) {
+                        return false;
+                    }
+                    // 小数点を除いた桁数をチェック
+                    $digits = strlen(str_replace('.', '', (string)$value));
+                    return $digits <= 5;
+                },
+                'message' => 'confidenceは最大5桁（うち小数4桁）で指定してください。'
+            ])
             ->allowEmptyString('confidence');
 
         $validator
-            ->dateTime('request_timestamp')
+            ->add('request_timestamp', 'validFormat', [
+                'rule' => function ($value) {
+                    if (empty($value)) {
+                        return true;
+                    }
+                    // マイクロ秒6桁付きの日時 (例: 2025-11-09 23:12:19.109514)
+                    return preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/',$value) === 1;
+                },
+                'message' => 'request_timestampは「YYYY-MM-DD HH:MM:SS.######」形式で指定してください。'
+            ])
             ->allowEmptyDateTime('request_timestamp');
 
         $validator
-            ->dateTime('response_timestamp')
+            ->add('response_timestamp', 'validFormat', [
+                'rule' => function ($value) {
+                    if (empty($value)) {
+                        return true;
+                    }
+                    // マイクロ秒6桁付きの日時 (例: 2025-11-09 23:12:19.109514)
+                    return preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/',$value) === 1;
+                },
+                'message' => 'response_timestampは「YYYY-MM-DD HH:MM:SS.######」形式で指定してください。'
+            ])
             ->allowEmptyDateTime('response_timestamp');
 
         return $validator;

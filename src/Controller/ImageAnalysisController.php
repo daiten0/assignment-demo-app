@@ -32,22 +32,19 @@ class ImageAnalysisController extends AppController
 
         // 存在チェック
         if (!$image || $image->getError() !== UPLOAD_ERR_OK) {
-            $this->Flash->error('画像が取得できませんでした。');
-            return $this->render('index');
+            return $this->renderError('画像が取得できませんでした。');
         }
 
         // MIMEタイプチェック
         $allowedTypes = ['image/jpeg', 'image/png'];
         if (!in_array($image->getClientMediaType(), $allowedTypes)) {
-            $this->Flash->error('JPEG, PNG 以外の画像はアップロードできません。');
-            return $this->render('index');
+            return $this->renderError('JPEG, PNG 以外の画像はアップロードできません。');
         }
 
         // ファイルサイズチェック（5MBまで）
         $maxSize = 5 * 1024 * 1024;
         if ($image->getSize() > $maxSize) {
-            $this->Flash->error('画像サイズは5MB以下にしてください。');
-            return $this->render('index');
+            return $this->renderError('画像サイズは5MB以下にしてください。');
         }
 
         // 保存先ディレクトリ
@@ -55,7 +52,7 @@ class ImageAnalysisController extends AppController
         $imagePath = $uploadDir . $image->getClientFilename();
 
         // インスタンス生成
-        $aiAnalysisLogTable = TableRegistry::getTableLocator()->get('AiAnalysisLog');
+        $aiAnalysisLogTable = $this->fetchTable('AiAnalysisLog');
 
         // リクエスト前タイムスタンプ
         $requestTimestamp = (new \DateTime())->format('Y-m-d H:i:s.u');
@@ -69,28 +66,40 @@ class ImageAnalysisController extends AppController
         // レスポンスチェック
         if (!$response['success']) {
             // 失敗
-            $this->Flash->error('AI解析APIの実行に失敗しました。');
-            return $this->render('index');
+            return $this->renderError('AI解析APIの実行に失敗しました。');
         }
 
-        // 保存データ
+        // 解析データ
         $data = [
             'image_path'            => $imagePath,
-            'success'               => ImageAnalysisController::SUCCESS,
+            'success'               => self::SUCCESS,
             'message'               => $response['message'],
             'class'                 => $response['estimated_data']['class'],
             'confidence'            => $response['estimated_data']['confidence'],
             'request_timestamp'     => $requestTimestamp,
             'response_timestamp'    => $responseTimestamp,
         ];
+        // バリデーション
         $aiAnalysisLog = $aiAnalysisLogTable->newEntity($data);
+        $errorMessage = '';
+        if ($aiAnalysisLog->getErrors()) {
+            $errors = $aiAnalysisLog->getErrors();
+            foreach ($errors as $field => $fieldErrors) {
+                foreach ($fieldErrors as $rule => $message) {
+                    $errorMessage = $errorMessage . "{$message}<br>";
+                }
+            }
+            return $this->renderError($errorMessage);
+        }
 
-        // 解析結果を格納
-        if (!$aiAnalysisLogTable->save($aiAnalysisLog)) {
-            // 失敗
-            $this->Flash->error('解析結果の保存に失敗しました。');
-            return $this->render('index');
-        } 
+        // 解析結果を保存
+        try {
+            if (!$aiAnalysisLogTable->save($aiAnalysisLog)) {
+                return $this->renderError('解析結果の保存に失敗しました。');
+            } 
+        } catch (\Throwable $e) {
+            return $this->renderError($e->getMessage());
+        }
 
         $this->Flash->success('解析結果を保存しました。');
         return $this->render('index');
@@ -131,5 +140,11 @@ class ImageAnalysisController extends AppController
                 'confidence' => mt_rand(0, 10000)/10000, // ランダムで確信度を返す（テスト用）
             ],
         ];
+    }
+
+    private function renderError(string $message)
+    {
+        $this->Flash->error($message, ['escape' => false]);
+        return $this->render('index');
     }
 }
