@@ -1,3 +1,11 @@
+# 開発環境情報
+| 項目 | バージョン | 
+|------|-------------|
+| PHP | 8.4.14 |
+| CakePHP | 5.2.9 |
+| MySQL | 9.5.0 (Homebrew) |
+| Composer | 2.8.12 |
+
 # アプリ起動手順
 ## 1. リポジトリをクローン
 git clone https://github.com/yourname/assignment-demo-app.git
